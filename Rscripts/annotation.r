@@ -3,6 +3,9 @@
 # Cell Type Annotation Script for scRNA-seq data (Seurat v5)
 # Supports multiple annotation methods: SingleR, Azimuth, clustifyr
 
+# Load renv
+renv::load("/N/project/Krolab/Siddharth/Pipelines/scrna-seq/Renv")
+
 # Load required libraries
 suppressPackageStartupMessages({
   library(Seurat)

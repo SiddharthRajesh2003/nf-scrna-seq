@@ -1,5 +1,8 @@
 #!usr/bin/env Rscript
 
+# Load Renv
+renv::load("/N/project/Krolab/Siddharth/Pipelines/scrna-seq/Renv")
+
 suppressPackageStartupMessages({
     library(Seurat)
     library(tidyverse)
@@ -295,7 +298,7 @@ dev.off()
 p10 <- ElbowPlot(seurat_integrated, ndims = opt$dims) +
   ggtitle("PCA Elbow Plot") +
   theme_minimal()
-jpg("qc_plots/elbow_plot.jpg", width = 8, height = 6, dpi = 300)
+jpeg("qc_plots/elbow_plot.jpg", width = 8, height = 6, dpi = 300)
 print(p10)
 dev.off()
 

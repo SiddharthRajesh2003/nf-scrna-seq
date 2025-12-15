@@ -1,8 +1,10 @@
 #!usr/bin/env Rscript
 install.packages('renv')
-renv::init('')
+renv::init(project = "Renv")
 
 install.packages('BiocManager')
+install.packages('tidy')
+BiocManager::install('Seurat')
 BiocManager::install('SingleR')
 BiocManager::install('clustifyr')
 
