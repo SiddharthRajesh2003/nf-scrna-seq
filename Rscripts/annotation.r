@@ -181,64 +181,6 @@ annotate_with_azimuth <- function(seurat_obj, reference_name) {
 }
 
 # ============================================================================
-# Method 3: clustifyr Annotation
-# ============================================================================
-annotate_with_clustifyr <- function(seurat_obj, reference_path) {
-  cat("Running clustifyr annotation...\n")
-  
-  suppressPackageStartupMessages({
-    library(clustifyr)
-  })
-  
-  # Get average expression per cluster
-  # For Seurat v5, specify layer
-  avg_expr <- AverageExpression(seurat_obj, 
-                                  assays = "RNA",
-                                  layer = "data",
-                                  group.by = "seurat_clusters")$RNA
-  
-  # Load reference
-  if (reference_path == "clustifyr::ref_hema_microarray") {
-    ref_data <- ref_hema_microarray()
-  } else if (reference_path == "clustifyr::ref_MCA") {
-    ref_data <- ref_MCA()
-  } else {
-    cat("Loading custom reference from:", reference_path, "\n")
-    ref_data <- readRDS(reference_path)
-  }
-  
-  # Run clustifyr
-  results <- clustify(
-    input = avg_expr,
-    ref_mat = ref_data,
-    cluster_col = "seurat_clusters",
-    metadata = seurat_obj@meta.data
-  )
-  
-  # Add to Seurat object
-  seurat_obj$clustifyr_type <- results$type[match(seurat_obj$seurat_clusters, 
-                                                    results$cluster)]
-  
-  # Summary
-  cat("\nclustifyr annotation summary:\n")
-  print(table(seurat_obj$clustifyr_type))
-  
-  # Generate plots
-  p1 <- DimPlot(seurat_obj, reduction = "umap", group.by = "clustifyr_type", 
-                label = TRUE, repel = TRUE, label.size = 3) +
-    ggtitle("clustifyr Cell Type Annotation") +
-    theme(legend.position = "bottom")
-  ggsave("annotation_plots/clustifyr_umap.png", p1, width = 12, height = 10)
-  
-  # Correlation heatmap
-  p2 <- plot_cor_heatmap(cor_mat = results)
-  ggsave("annotation_plots/clustifyr_correlation_heatmap.png", p2, 
-         width = 10, height = 8)
-  
-  return(seurat_obj)
-}
-
-# ============================================================================
 # Find cluster markers
 # ============================================================================
 find_cluster_markers <- function(seurat_obj) {
@@ -283,7 +225,6 @@ cat("Starting cell type annotation with method:", opt$method, "\n\n")
 seurat_obj <- switch(opt$method,
   "singler" = annotate_with_singler(seurat_obj, opt$reference),
   "azimuth" = annotate_with_azimuth(seurat_obj, opt$azimuth_reference),
-  "clustifyr" = annotate_with_clustifyr(seurat_obj, opt$reference),
   stop("Unknown annotation method: ", opt$method)
 )
 
@@ -309,14 +250,6 @@ if (opt$method == "singler") {
                     ncol = 2)
   ggsave("annotation_plots/clusters_vs_annotations.png",
           width = 16, height = 6)
-  print(p_comp)
-  dev.off()
-} else if (opt$method == "clustifyr") {
-  p_comp <- DimPlot(seurat_obj, reduction = "umap", 
-                    group.by = c("seurat_clusters", "clustifyr_type"), 
-                    ncol = 2)
-  ggsave("annotation_plots/clusters_vs_annotations.png",
-        width = 16, height = 6)
   print(p_comp)
   dev.off()
 }

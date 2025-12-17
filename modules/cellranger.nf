@@ -11,7 +11,7 @@ process CellRanger {
     path transcriptome
     
     output:
-    tuple val(sample_id),  path("${sample_id}/outs")
+    tuple val(sample_id),  path("${sample_id}/outs/filtered_feature_bc_matrix/")
 
     script:
     """
@@ -21,6 +21,7 @@ process CellRanger {
         --fastqs=${params.fastq_dir} \\
         --sample=${sample_id} \\
         --localcores=${task.cpus} \\
-        --localmem=${task.memory.toGiga()}
+        --localmem=${task.memory.toGiga()} \\
+        --create-bam=false
     """
 }

@@ -7,7 +7,7 @@ process QC {
     publishDir "${params.fastqqc_dir}", mode: 'copy'
 
     input:
-    tuple val(sample_id), path(r2)
+    tuple val(sample_id), path(fastq_dir)
 
     output:
     path "*.html"
@@ -15,6 +15,6 @@ process QC {
 
     script:
     """
-    fastqc ${r2} --threads ${task.cpus}
+    fastqc ${fastq_dir}/*.fastq.gz --threads ${task.cpus}
     """
 }
