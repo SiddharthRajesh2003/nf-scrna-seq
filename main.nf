@@ -22,7 +22,7 @@ def helpMessage() {
         nextflow run main.nf [options]
     
     Required Options:
-        --input_csv             Path to samplesheet CSV file (columns: sample_id, fastq_dir)
+        --samplesheet             Path to samplesheet CSV file (columns: sample_id, fastq_dir)
         --transcriptome         Path to Cell Ranger transcriptome reference
         --integration_script    Path to R script for data integration
         --annotation_script     Path to R script for cluster annotation
@@ -38,10 +38,6 @@ def helpMessage() {
         --skip_qc               Skip FastQC step [default: false]
         --skip_cellranger       Skip Cell Ranger and use existing outputs [default: false]
         --fallback_to_cellranger Run Cell Ranger if existing outputs not found [default: true]
-    
-    Cell Ranger Options:
-        --expect_cells          Expected number of cells [default: 3000]
-        --chemistry             Chemistry version [default: auto]
     
     Example:
         nextflow run main.nf \\
