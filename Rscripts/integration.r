@@ -1,4 +1,4 @@
-#!usr/bin/env Rscript
+#!/usr/bin/env Rscript
 
 # Load Renv
 renv::load("/N/project/Krolab/Siddharth/Pipelines/scrna-seq/Renv")
@@ -9,36 +9,34 @@ suppressPackageStartupMessages({
     library(optparse)
     library(ggplot2)
     library(patchwork)
-    })
+})
 
 option_list <- list(
-  make_option(c("--input_dirs", type = "character", defaults = NULL,
-            help = "Comma separated list of Cellranger output directories")),
-  make_option(c("--output", type = "character", default = "integrated_seurat.rds",
-            help = "Output RDS file path default: [%default]")),
-  make_option(c("--min_cells", type = "integer", default = 3,
-            help = "Minimum cells per gene for Seurat::Read10X function [%default]" )),
-  make_option(c("--min_features", type = "integer", defaults = 200,
-            help = "Minimum features per cell for Seurat::CreateSeuratObject function [%default]")),
-  make_option(c("--max_features"), type = "integer", default = 7000,
-              help = "Maximum number of features per cell"),
+  make_option(c("--input_dirs"), type = "character", default = NULL,
+            help = "Comma separated list of Cellranger output directories"),
+  make_option(c("--output"), type = "character", default = "integrated_seurat.rds",
+            help = "Output RDS file path [default: %default]"),
+  make_option(c("--min_cells"), type = "integer", default = 3,
+            help = "Minimum cells per gene for Seurat::Read10X function [default: %default]"),
   make_option(c("--min_features"), type = "integer", default = 200,
-              help = "Minimum number of features per cell"),
+            help = "Minimum features per cell for Seurat::CreateSeuratObject function [default: %default]"),
+  make_option(c("--max_features"), type = "integer", default = 7000,
+              help = "Maximum number of features per cell [default: %default]"),
   make_option(c("--max_mt_percent"), type = "numeric", default = 20,
-              help = "Maximum mitochondrial percentage"),
+              help = "Maximum mitochondrial percentage [default: %default]"),
   make_option(c("--dims"), type = "integer", default = 30,
-              help = "Number of dimensions for integration"),
-  make_option(c("--resolution", type = "numeric", default = 0.3,
-              help = "Clustering resolution" )),
-  make_option(c("--max_umi", type = "intger", default = 50000,
-              help = 'Maximum Number of UMIs per cell')),
-  make_option(c("--min_umi", type = "integer", default = 1000,
-              help = "Minimum number of UMIs per cell")),
-  make_option(c("--integration_method", type = "character", default = 'cca',
-              help = "Integration method: cca[CCAIntegration], rpca[RPCAIntegration], harmony[HarmonyIntegration], mnn[FastMNNIntegration]"))
+              help = "Number of dimensions for integration [default: %default]"),
+  make_option(c("--resolution"), type = "numeric", default = 0.3,
+              help = "Clustering resolution [default: %default]"),
+  make_option(c("--max_umi"), type = "integer", default = 50000,
+              help = "Maximum Number of UMIs per cell [default: %default]"),
+  make_option(c("--min_umi"), type = "integer", default = 1000,
+              help = "Minimum number of UMIs per cell [default: %default]"),
+  make_option(c("--integration_method"), type = "character", default = 'cca',
+              help = "Integration method: cca[CCAIntegration], rpca[RPCAIntegration], harmony[HarmonyIntegration], mnn[FastMNNIntegration] [default: %default]")
 )
 
-opt_parser = OptionParser(options_list=option_list)
+opt_parser <- OptionParser(option_list = option_list)
 opt <- parse_args(opt_parser)
 
 if (is.null(opt$input_dirs)) {
@@ -49,8 +47,8 @@ if (is.null(opt$input_dirs)) {
 input_dirs <- strsplit(opt$input_dirs, ",")[[1]]
 sample_names <- basename(dirname(dirname(input_dirs)))
 
-cat("Processing", length(input_dirs), " samples\n")
-cat(paste(sample_names, collapse =  "\n"), "\n\n")
+cat("Processing", length(input_dirs), "samples\n")
+cat(paste(sample_names, collapse = "\n"), "\n\n")
 
 # Create output directory for plots
 if (!dir.exists("qc_plots")) dir.create("qc_plots")
@@ -63,7 +61,7 @@ cat("Loading data from Cell Ranger outputs...\n")
 seurat_list <- list()
 
 for (i in seq_along(input_dirs)) {
-  cat("Loading sample: ", sample_names[i], "\n")
+  cat("Loading sample:", sample_names[i], "\n")
 
   counts <- Read10X(data.dir = input_dirs[i])
 
@@ -75,23 +73,19 @@ for (i in seq_along(input_dirs)) {
   seurat_obj$sample <- sample_names[i]
 
   seurat_obj[["percent.mt"]] <- PercentageFeatureSet(seurat_obj, pattern = "^MT-")
-  seruat_obj[["percent.rb"]] <- PercentageFeatureSet(seurat_obj, pattern = "^RP[SL]")
+  seurat_obj[["percent.rb"]] <- PercentageFeatureSet(seurat_obj, pattern = "^RP[SL]")
   seurat_obj$log10GenesPerUMI <- log10(seurat_obj$nFeature_RNA) / log10(seurat_obj$nCount_RNA)
   
-  seurat_list[[sample_names[[i]]]] <- seurat_obj
+  seurat_list[[sample_names[i]]] <- seurat_obj
 }
-
-max_genes <- opt$max_features
-min_genes <- opt$min_features
-max_UMI <- opt$max_umi
-min_UMI <- opt$min_umi
-max_percent_mt <- opt$max_mt_percent
 
 cat("Filtering cells based on QC metrics\n")
 seurat_list <- lapply(seurat_list, function(x) {
     subset(x,
            subset = nFeature_RNA > opt$min_features &
                     nFeature_RNA < opt$max_features &
+                    nCount_RNA > opt$min_umi &
+                    nCount_RNA < opt$max_umi &
                     percent.mt < opt$max_mt_percent &
                     percent.rb < 40)
 })
@@ -119,7 +113,7 @@ cat("Method:", opt$integration_method, "\n\n")
 cat("Splitting layers by sample...\n")
 merged_seurat[["RNA"]] <- split(merged_seurat[["RNA"]], f = merged_seurat$sample)
 
-cat("Normalizing data...n")
+cat("Normalizing data...\n")
 merged_seurat <- NormalizeData(merged_seurat)
 
 cat("Finding variable features...\n")
@@ -142,7 +136,6 @@ if (opt$integration_method == 'cca') {
     new.reduction = 'integrated.cca',
     verbose = TRUE
   )
-
   reduction_name <- 'integrated.cca'
 
 } else if (opt$integration_method == 'rpca') {
@@ -153,7 +146,6 @@ if (opt$integration_method == 'cca') {
     new.reduction = 'integrated.rpca',
     verbose = TRUE
   )
-
   reduction_name <- 'integrated.rpca'
 
 } else if (opt$integration_method == 'harmony') {
@@ -164,10 +156,9 @@ if (opt$integration_method == 'cca') {
     new.reduction = 'harmony',
     verbose = TRUE
   )
-
   reduction_name <- 'harmony'
 
-} else if (opt$integration_method == 'mnn')  {
+} else if (opt$integration_method == 'mnn') {
   seurat_integrated <- IntegrateLayers(
     object = merged_seurat,
     method = FastMNNIntegration,
@@ -175,7 +166,6 @@ if (opt$integration_method == 'cca') {
     new.reduction = 'integrated.mnn',
     verbose = TRUE
   )
-
   reduction_name <- 'integrated.mnn'
 } else {
   stop("Unknown integration method: ", opt$integration_method) 
@@ -191,7 +181,7 @@ seurat_integrated[["RNA"]] <- JoinLayers(seurat_integrated[["RNA"]])
 
 cat("\nPerforming dimensionality reduction and clustering...\n")
 
-cat("Finding Neightbours...\n")
+cat("Finding Neighbours...\n")
 seurat_integrated <- FindNeighbors(seurat_integrated, reduction = reduction_name, dims = 1:opt$dims)
 
 cat("Finding Clusters...\n")
@@ -209,23 +199,21 @@ seurat_integrated <- RunTSNE(seurat_integrated, reduction = reduction_name, dims
 
 cat("\nGenerating QC plots...\n")
 
-# UMAP Plots
 # UMAP by Sample
 p1 <- DimPlot(seurat_integrated, reduction = "umap", group.by = "sample") +
       ggtitle("UMAP by Sample") +
       theme_minimal() +
       theme(legend.position = 'right')
-jpeg('qc_plots/umap_by_sample.jpg', width = 12, height = 8, units = 'in', dpi = 300)
+jpeg('qc_plots/umap_by_sample.jpg', width = 12, height = 8, units = 'in', res = 300)
 print(p1)
 dev.off()
-
 
 # UMAP by Clusters
 p2 <- DimPlot(seurat_integrated, reduction = "umap", group.by = "seurat_clusters", label = TRUE, pt.size = 0.5) +
       ggtitle("UMAP by Clusters") +
       theme_minimal() +
       theme(legend.position = 'right')
-jpeg('qc_plots/umap_by_clusters.jpg', width = 12, height = 8, units = 'in', dpi = 300)
+jpeg('qc_plots/umap_by_clusters.jpg', width = 12, height = 8, units = 'in', res = 300)
 print(p2)
 dev.off()
 
@@ -234,54 +222,53 @@ p3 <- DimPlot(seurat_integrated, reduction = "umap", group.by = "seurat_clusters
       ggtitle("UMAP by Clusters Split by Sample") +
       theme_minimal() +
       theme(legend.position = 'right')
-jpeg('qc_plots/umap_by_clusters_split_by_sample.jpg', width = 16, height = 12, units = 'in', dpi = 300)
+jpeg('qc_plots/umap_by_clusters_split_by_sample.jpg', width = 16, height = 12, units = 'in', res = 300)
 print(p3)
 dev.off()
 
-# TSNE Plots
 # TSNE by sample
 p4 <- DimPlot(seurat_integrated, reduction = "tsne", group.by = "sample") +
       ggtitle("t-SNE by Sample") +
       theme_minimal() +
       theme(legend.position = 'right')
-jpeg('qc_plots/tsne_by_sample.jpg', width = 12, height = 8, units = 'in', dpi = 300)
+jpeg('qc_plots/tsne_by_sample.jpg', width = 12, height = 8, units = 'in', res = 300)
 print(p4)
 dev.off()
 
-# UMAP by Clusters
+# TSNE by Clusters
 p5 <- DimPlot(seurat_integrated, reduction = "tsne", group.by = "seurat_clusters", label = TRUE, pt.size = 0.5) +
       ggtitle("t-SNE by Clusters") +
       theme_minimal() +
       theme(legend.position = 'right')
-jpeg('qc_plots/tsne_by_clusters.jpg',  width = 12, height = 8, units = 'in', dpi = 300)
+jpeg('qc_plots/tsne_by_clusters.jpg', width = 12, height = 8, units = 'in', res = 300)
 print(p5)
 dev.off()
-
 
 # Split by sample
 p6 <- DimPlot(seurat_integrated, reduction = "tsne", group.by = "seurat_clusters", split.by = 'sample', ncol = 2, label = TRUE, pt.size = 0.5) +
       ggtitle("t-SNE by Clusters Split by Sample") +
       theme_minimal() +
       theme(legend.position = 'right')
-jpeg('qc_plots/tsne_by_clusters_split_by_sample.jpg', width = 16, height = 12, units = 'in', dpi = 300)
+jpeg('qc_plots/tsne_by_clusters_split_by_sample.jpg', width = 16, height = 12, units = 'in', res = 300)
 print(p6)
 dev.off()
 
+# QC metrics violin plot
 p7 <- VlnPlot(seurat_integrated, 
               features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), 
               ncol = 3, pt.size = 0, group.by = "sample") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-jpeg('qc_plots/qc_metrics_by_sample.jpg', width = 16, height = 12, units = 'in', dpi = 300)
+jpeg('qc_plots/qc_metrics_by_sample.jpg', width = 16, height = 6, units = 'in', res = 300)
 print(p7)
 dev.off()
 
-# Feature plots for key markers (if data is available)
+# Feature plots for key markers
 common_markers <- c("CD3D", "CD8A", "CD4", "MS4A1", "CD14", "FCGR3A")
 available_markers <- common_markers[common_markers %in% rownames(seurat_integrated)]
 
 if (length(available_markers) > 0) {
   p8 <- FeaturePlot(seurat_integrated, features = available_markers, ncol = 3)
-  jpeg("qc_plots/marker_genes.jpg", width = 15, height = 10, dpi = 300)
+  jpeg("qc_plots/marker_genes.jpg", width = 15, height = 10, units = 'in', res = 300)
   print(p8)
   dev.off()
 }
@@ -290,7 +277,7 @@ if (length(available_markers) > 0) {
 p9 <- DimPlot(seurat_integrated, reduction = "pca", group.by = "sample") +
   ggtitle("PCA by Sample") +
   theme_minimal()
-jpeg("qc_plots/pca_by_sample.jpg", width = 10, height = 8, dpi = 300)
+jpeg("qc_plots/pca_by_sample.jpg", width = 10, height = 8, units = 'in', res = 300)
 print(p9)
 dev.off()
 
@@ -298,7 +285,7 @@ dev.off()
 p10 <- ElbowPlot(seurat_integrated, ndims = opt$dims) +
   ggtitle("PCA Elbow Plot") +
   theme_minimal()
-jpeg("qc_plots/elbow_plot.jpg", width = 8, height = 6, dpi = 300)
+jpeg("qc_plots/elbow_plot.jpg", width = 8, height = 6, units = 'in', res = 300)
 print(p10)
 dev.off()
 
@@ -306,20 +293,21 @@ dev.off()
 # Save Results
 # ============================================================================
 
-cat("\nSaving Integrated Seurat Object...\n ")
+cat("\nSaving Integrated Seurat Object...\n")
 saveRDS(seurat_integrated, file = opt$output)
 
 cat("\nIntegration complete!\n")
 cat("Integrated object saved to:", opt$output, "\n")
 
 # ============================================================================
-# Print Summary
+# Print Summary to file
 # ============================================================================
 
-cat("\n" , rep("=", 60), "\n", sep = "")
+sink("integration_summary.txt")
+cat(rep("=", 60), "\n", sep = "")
 cat("INTEGRATION SUMMARY\n")
 cat(rep("=", 60), "\n", sep = "")
-cat("Seurat version:", as.character(seurat_version), "\n")
+cat("Seurat version:", as.character(packageVersion("Seurat")), "\n")
 cat("Integration method:", opt$integration_method, "\n")
 cat("Reduction used:", reduction_name, "\n")
 cat("\nData summary:\n")
@@ -339,5 +327,6 @@ cat("\nOutput files:\n")
 cat("  RDS object:", opt$output, "\n")
 cat("  QC plots: qc_plots/\n")
 cat(rep("=", 60), "\n", sep = "")
+sink()
 
 cat("\nPipeline complete!\n")

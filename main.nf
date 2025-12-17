@@ -56,8 +56,8 @@ def helpMessage() {
 def validateParams() {
     def errors = []
     
-    if (!params.input_csv) {
-        errors << "Missing required parameter: --input_csv"
+    if (!params.samplesheet) {
+        errors << "Missing required parameter: --samplesheet"
     }
     if (!params.transcriptome) {
         errors << "Missing required parameter: --transcriptome"
@@ -121,7 +121,7 @@ workflow {
         }
     
     // Optional: Run FastQC
-    if (!params.skip_qc) {
+    if (!params.skip_fastqc) {
         log.info "Running FastQC on samples"
         QC(samples_ch)
     } else {
@@ -166,7 +166,7 @@ workflow {
 
     // Run annotation on integrated data
     Annotation(
-        integration_output,
+        integration_output.out.seurat_object,
         params.annotation_script
     )
 

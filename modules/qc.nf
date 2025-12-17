@@ -4,7 +4,7 @@ nextflow.enable.dsl = 2
 
 process QC {
     tag "Performing Quality Control on ${sample_id}"
-    publishDir "${params.fastqqc_dir}", mode: 'copy'
+    publishDir "${params.fastqc_dir}", mode: 'copy'
 
     input:
     tuple val(sample_id), path(fastq_dir)
