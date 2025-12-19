@@ -22,7 +22,7 @@ cd $base
 
 # Create output directory variable (fixed case)
 OUTPUT_DIR=${base}/results                   # Fixed: Changed from lowercase 'output'
-mkdir -p ${OUTPUT_DIR}/pipeline_info         # Create directory for reports
+mkdir -p ${OUTPUT_DIR}/reports               # Create directory for reports
 
 echo "Base directory: $base"
 echo "Output directory: $OUTPUT_DIR"
@@ -46,7 +46,11 @@ echo "Starting pipeline execution..."
 nextflow run main.nf \
     --samplesheet samples.csv \
     -resume \
-    -profile slurm
+    -profile slurm \
+    -with-timeline ${OUTPUT_DIR}/pipeline_info/execution_timeline_${SLURM_JOB_ID}.html \
+    -with-report ${OUTPUT_DIR}/pipeline_info/execution_report_${SLURM_JOB_ID}.html \
+    -with-trace ${OUTPUT_DIR}/pipeline_info/execution_trace_${SLURM_JOB_ID}.txt \
+    -with-dag ${OUTPUT_DIR}/pipeline_info/pipeline_dag_${SLURM_JOB_ID}.html
 
 # Capture exit status
 EXIT_STATUS=$?

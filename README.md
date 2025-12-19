@@ -1,0 +1,3 @@
+# Nextflow-automated pipeline for single-cell RNA-seq data analysis
+
+This repository contains a Nextflow pipeline designed for the automated analysis of single-cell RNA sequencing (scRNA-seq) data. The pipeline integrates various tools (FastQC and CellRanger) and methods to streamline the processing and analysis of scRNA-seq datasets. The pipeline contains scripts for integration and annotation of the Cell Ranger outputs using Seurat and Azimuth/SingleR.
