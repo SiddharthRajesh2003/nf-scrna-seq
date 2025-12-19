@@ -103,7 +103,7 @@ workflow {
 
     // Read sample sheet and create channel
     // Expected CSV format: sample_id, fastq_dir
-    samples_ch = channel
+    qc_samples_ch = channel
         .fromPath(params.samplesheet, checkIfExists: true)
         .splitCsv(header: true)
         .map { row ->
@@ -112,10 +112,19 @@ workflow {
             tuple(sample_id, fastq_files)
         }
     
+    cellranger_samples_ch = channel
+        .fromPath(params.samplesheet, checkIfExists: true)
+        .splitCsv(header:true)
+        .map { row ->
+            def sample_id = row.sample_id
+            def fastq_dir = file(row.fastq_dir)
+            tuple(sample_id, fastq_dir)
+        }
+
     // Optional: Run FastQC
     if (!params.skip_fastqc) {
         log.info "Running FastQC on samples"
-        QC(samples_ch)
+        QC(qc_samples_ch)
 
         MultiQC(QC.out.zip.collect())
     } else {
@@ -142,7 +151,7 @@ workflow {
 
         // Run Cell Ranger
         cellranger_outputs_ch = CellRanger(
-            samples_ch,
+            cellranger_samples_ch,
             params.transcriptome
         )
     }
