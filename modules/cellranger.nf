@@ -7,7 +7,7 @@ process CellRanger {
     publishDir "${params.cellranger_dir}", mode: "copy"
 
     input:
-    tuple val(sample_id), path(r1), path(r2)
+    tuple val(sample_id), path(fastq_dir)
     path transcriptome
     
     output:
@@ -18,7 +18,7 @@ process CellRanger {
     cellranger count \\
         --id=${sample_id} \\
         --transcriptome=${transcriptome} \\
-        --fastqs=${params.fastq_dir} \\
+        --fastqs=${fastq_dir} \\
         --sample=${sample_id} \\
         --localcores=${task.cpus} \\
         --localmem=${task.memory.toGiga()} \\

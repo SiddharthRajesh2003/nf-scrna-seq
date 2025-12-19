@@ -4,6 +4,7 @@ nextflow.enable.dsl = 2
 
 // Import modules
 include { QC } from './modules/qc.nf'
+include { MultiQC } from './modules/multiqc.nf'
 include { CellRanger } from './modules/cellranger.nf'
 include { Integration } from './modules/integration.nf'
 include { Annotation } from './modules/annotation.nf'
@@ -107,19 +108,16 @@ workflow {
         .splitCsv(header: true)
         .map { row ->
             def sample_id = row.sample_id
-            def fastq_dir = file(row.fastq_dir)
-
-            if (!fastq_dir.exists()) {
-                error "FASTQ directory does not exist for sample ${sample_id}: ${fastq_dir}"
-            }
-
-            tuple(sample_id, fastq_dir)
+            def fastq_files = file("${row.fastq_dir}/*.fastq.gz")
+            tuple(sample_id, fastq_files)
         }
     
     // Optional: Run FastQC
     if (!params.skip_fastqc) {
         log.info "Running FastQC on samples"
         QC(samples_ch)
+
+        MultiQC(QC.out.zip.collect())
     } else {
         log.info "Skipping QC as requested"
     }
@@ -149,21 +147,8 @@ workflow {
         )
     }
 
-    // COllect all CellRanger outputs for integration
-    // The collect() operator will wait for all samples to complete
-    all_samples_ch = cellranger_outputs_ch.collect()
-
-    // Run integration on all samples
-    log.info "Running integration on all samples"
-    integration_output = Integration(
-        all_samples_ch,
-        params.integration_script
-    )
-
-    // Run annotation on integrated data
-    Annotation(
-        integration_output.out.seurat_object,
-        params.annotation_script
+    DownstreamAnalysis(
+        cellranger_outputs_ch
     )
 
     workflow.onComplete {
@@ -190,4 +175,30 @@ workflow {
         =====================================================================
         """
     }
+}
+
+workflow DownstreamAnalysis {
+    take:
+        cellranger_outputs_ch
+    
+    main:
+    // Collect all CellRanger outputs for integration
+    // The collect() operator will wait for all samples to complete
+    matrix_dirs_ch = cellranger_outputs_ch
+        .map { _sample_id, matrix_dir -> matrix_dir }
+        .collect()
+
+    // Run integration on all samples
+    log.info "Running integration on all samples"
+    Integration(
+        matrix_dirs_ch,
+        params.integration_script
+    )
+
+    // Run annotation on integrated data
+    Annotation(
+        Integration.out.seurat_object,
+        params.annotation_script
+    )
+
 }

@@ -3,11 +3,11 @@
 nextflow.enable.dsl = 2
 
 process Integration {
-    tag "Integrating ${sample_ids.size()} samples using ${params.integration_method}"
+    tag "Integrating samples using ${params.integration_method}"
     publishDir "${params.integration_dir}", mode: 'copy'
 
     input:
-    tuple val(sample_ids), path(matrix_dirs)
+    path matrix_dirs  // Nextflow will stage all directories
     path integration_script
 
     output:
@@ -18,7 +18,6 @@ process Integration {
     script:
     // Join paths with commas for R script
     def input_paths = matrix_dirs.join(',')
-    
     """
     Rscript ${integration_script} \\
         --input_dirs ${input_paths} \\
