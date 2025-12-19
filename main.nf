@@ -75,7 +75,7 @@ def validateParams() {
 }
 
 // Check if Cell Ranger should actually be skipped
-def acutallyskipCellRanger() {
+def actuallyskipCellRanger() {
     if (!params.skip_cellranger) {
         return false
     }
@@ -132,7 +132,7 @@ workflow {
     }
 
     // Determine whether to run Cell Ranger or use existing outputs
-    def skipCellRanger = acutallyskipCellRanger()
+    def skipCellRanger = actuallyskipCellRanger()
     
     if (skipCellRanger) {
         log.info "Using Existing Cell Ranger outputs from ${params.cellranger_dir}"
@@ -143,17 +143,23 @@ workflow {
             .map { matrix_dir ->
                 // Extract sample_id from directory structure
                 // Assumes structure: cellranger_dir/sample_id/outs/filtered_feature_bc_matrix
-                def sample_id = matrix_dir.parent.parent.name
+                def sample_id = matrix_dir.parent.parent.name.replaceAll("/_output$/", "")
                 tuple(sample_id, matrix_dir)
             }
     } else {
         log.info "Running Cell ranger on samples..."
 
         // Run Cell Ranger
-        cellranger_outputs_ch = CellRanger(
+        cellranger_all_output = CellRanger(
             cellranger_samples_ch,
             params.transcriptome
         )
+
+        cellranger_outputs_ch = cellranger_all_output.map {
+            sample_id, outs_dir -> 
+                tuple(sample_id, file("${outs_dir}/filtered_feature_bc_matrix"))
+        }
+        
     }
 
     DownstreamAnalysis(

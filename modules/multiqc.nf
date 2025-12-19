@@ -10,7 +10,7 @@ process MultiQC {
     path('*')
 
     output:
-    path('*.html')
+    tuple path('*.html'), path('*_data/')
 
     script:
     """
