@@ -17,14 +17,6 @@ suppressPackageStartupMessages({
 
 cat("✓ All libraries loaded successfully\n\n")
 
-suppressPackageStartupMessages({
-    library(Seurat)
-    library(tidyverse)
-    library(optparse)
-    library(ggplot2)
-    library(patchwork)
-})
-
 option_list <- list(
   make_option(c("--input_dirs"), type = "character", default = NULL,
             help = "Comma separated list of Cellranger output directories"),

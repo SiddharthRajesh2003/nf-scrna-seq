@@ -6,17 +6,6 @@ process Integration {
     tag "Integrating samples using ${params.integration_method}"
     publishDir "${params.integration_dir}", mode: 'copy'
 
-    // Add environment variables
-    beforeScript """
-    export LANG=en_US.UTF-8
-    export LC_ALL=en_US.UTF-8
-    export R_LIBS=/N/project/Krolab/Siddharth/Pipelines/scrna-seq/conda_envs/env/renv/lib/R/library
-    export RENV_CONFIG_SANDBOX_ENABLED=FALSE
-    export RENV_PATHS_ROOT=/N/project/Krolab/Siddharth/Pipelines/scrna-seq/renv_root
-    export RENV_PATHS_CACHE=/N/project/Krolab/Siddharth/Pipelines/scrna-seq/renv_cache
-    export RENV_PATHS_SANDBOX=/N/project/Krolab/Siddharth/Pipelines/scrna-seq/renv_cache/sandbox
-    """
-
     input:
     val sample_data  // List of [sample_id, matrix_path] tuples
     path integration_script
@@ -35,12 +24,6 @@ process Integration {
     """
     # echo "R version:"
     R --version | head -n1
-    
-    echo "R library paths:"
-    R --slave -e '.libPaths()'
-    
-    echo "Checking for Seurat:"
-    R --slave -e 'if(file.exists("/N/project/Krolab/Siddharth/Pipelines/scrna-seq/conda_envs/env/renv/lib/R/library/Seurat")) cat("Seurat found in conda\\n")'
     
     Rscript ${integration_script} \\
         --input_dirs ${input_paths} \\
