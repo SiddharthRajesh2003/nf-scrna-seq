@@ -143,7 +143,7 @@ workflow {
             .map { matrix_dir ->
                 // Extract sample_id from directory structure
                 // Assumes structure: cellranger_dir/sample_id/outs/filtered_feature_bc_matrix
-                def sample_id = matrix_dir.parent.parent.name.replaceAll("/_output$/", "")
+                def sample_id = matrix_dir.parent.parent.name.replaceAll("_output", "")
                 tuple(sample_id, matrix_dir)
             }
     } else {
@@ -195,18 +195,15 @@ workflow {
 workflow DownstreamAnalysis {
     take:
         cellranger_outputs_ch
-    
+
     main:
-    // Collect all CellRanger outputs for integration
-    // The collect() operator will wait for all samples to complete
-    matrix_dirs_ch = cellranger_outputs_ch
-        .map { _sample_id, matrix_dir -> matrix_dir }
-        .collect()
+    // Collect all samples as list of tuples
+    all_samples = cellranger_outputs_ch.toList()
 
     // Run integration on all samples
     log.info "Running integration on all samples"
     Integration(
-        matrix_dirs_ch,
+        all_samples,
         params.integration_script
     )
 
@@ -215,5 +212,4 @@ workflow DownstreamAnalysis {
         Integration.out.seurat_object,
         params.annotation_script
     )
-
 }

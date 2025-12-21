@@ -6,8 +6,19 @@ process Integration {
     tag "Integrating samples using ${params.integration_method}"
     publishDir "${params.integration_dir}", mode: 'copy'
 
+    // Add environment variables
+    beforeScript """
+    export LANG=en_US.UTF-8
+    export LC_ALL=en_US.UTF-8
+    export R_LIBS=/N/project/Krolab/Siddharth/Pipelines/scrna-seq/conda_envs/env/renv/lib/R/library
+    export RENV_CONFIG_SANDBOX_ENABLED=FALSE
+    export RENV_PATHS_ROOT=/N/project/Krolab/Siddharth/Pipelines/scrna-seq/renv_root
+    export RENV_PATHS_CACHE=/N/project/Krolab/Siddharth/Pipelines/scrna-seq/renv_cache
+    export RENV_PATHS_SANDBOX=/N/project/Krolab/Siddharth/Pipelines/scrna-seq/renv_cache/sandbox
+    """
+
     input:
-    path matrix_dirs  // Nextflow will stage all directories
+    val sample_data  // List of [sample_id, matrix_path] tuples
     path integration_script
 
     output:
@@ -16,9 +27,21 @@ process Integration {
     path "integration_summary.txt", emit: summary
 
     script:
-    // Join paths with commas for R script
-    def input_paths = matrix_dirs.join(',')
+    // Create comma-separated list of paths
+    def input_paths = sample_data.collect { tuple -> 
+        "${tuple[1]}"
+    }.join(',')
+    
     """
+    # echo "R version:"
+    R --version | head -n1
+    
+    echo "R library paths:"
+    R --slave -e '.libPaths()'
+    
+    echo "Checking for Seurat:"
+    R --slave -e 'if(file.exists("/N/project/Krolab/Siddharth/Pipelines/scrna-seq/conda_envs/env/renv/lib/R/library/Seurat")) cat("Seurat found in conda\\n")'
+    
     Rscript ${integration_script} \\
         --input_dirs ${input_paths} \\
         --output integrated_seurat.rds \\

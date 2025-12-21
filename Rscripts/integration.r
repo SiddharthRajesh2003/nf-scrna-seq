@@ -1,7 +1,77 @@
 #!/usr/bin/env Rscript
 
-# Load Renv
-renv::load("/N/project/Krolab/Siddharth/Pipelines/scrna-seq/Renv")
+# === Environment Setup ===
+Sys.setenv(
+  LANG = "en_US.UTF-8",
+  LC_ALL = "en_US.UTF-8"
+)
+
+# Paths
+base_dir <- "/N/project/Krolab/Siddharth/Pipelines/scrna-seq"
+renv_project <- file.path(base_dir, "Renv")
+conda_lib <- file.path(base_dir, "conda_envs/env/renv/lib/R/library")
+
+# CRITICAL: Disable renv sandbox to prevent home directory access
+Sys.setenv(
+  RENV_CONFIG_SANDBOX_ENABLED = "FALSE",
+  RENV_PATHS_ROOT = file.path(base_dir, "renv_root"),
+  RENV_PATHS_CACHE = file.path(base_dir, "renv_cache"),
+  RENV_PATHS_LIBRARY_ROOT = file.path(renv_project, "renv/library"),
+  RENV_PATHS_LIBRARY = file.path(renv_project, "renv/library"),
+  RENV_PATHS_SANDBOX = file.path(base_dir, "renv_cache/sandbox")
+)
+
+# Set library paths BEFORE loading renv
+if (dir.exists(conda_lib)) {
+  .libPaths(c(conda_lib, .libPaths()))
+  cat("✓ Added conda library path\n")
+}
+
+# Try to load renv (but it's optional)
+tryCatch({
+  if (file.exists(file.path(renv_project, "renv/activate.R"))) {
+    source(file.path(renv_project, "renv/activate.R"))
+    cat("✓ renv loaded\n")
+  }
+}, error = function(e) {
+  cat("Note: renv load had issues, continuing with conda libraries\n")
+})
+
+# Ensure both paths are available (renv first, then conda)
+renv_lib <- file.path(renv_project, "renv/library/linux-rhel-8.10/R-4.5/x86_64-conda-linux-gnu")
+if (dir.exists(renv_lib) && !renv_lib %in% .libPaths()) {
+  .libPaths(c(renv_lib, .libPaths()))
+}
+if (dir.exists(conda_lib) && !conda_lib %in% .libPaths()) {
+  .libPaths(c(.libPaths(), conda_lib))
+}
+
+# Verify library paths
+cat("\nLibrary search paths:\n")
+for (i in seq_along(.libPaths())) {
+  cat(sprintf("  %d. %s\n", i, .libPaths()[i]))
+}
+cat("\n")
+
+# Check where Seurat is located
+if (file.exists(file.path(conda_lib, "Seurat"))) {
+  cat("✓ Seurat found in conda library\n")
+}
+if (dir.exists(renv_lib) && file.exists(file.path(renv_lib, "Seurat"))) {
+  cat("✓ Seurat found in renv library\n")
+}
+cat("\n")
+
+# === Load Required Libraries ===
+suppressPackageStartupMessages({
+    library(Seurat)
+    library(tidyverse)
+    library(optparse)
+    library(ggplot2)
+    library(patchwork)
+})
+
+cat("✓ All libraries loaded successfully\n\n")
 
 suppressPackageStartupMessages({
     library(Seurat)
@@ -46,6 +116,7 @@ if (is.null(opt$input_dirs)) {
 
 input_dirs <- strsplit(opt$input_dirs, ",")[[1]]
 sample_names <- basename(dirname(dirname(input_dirs)))
+sample_names <- gsub("_output$", "", sample_names)
 
 cat("Processing", length(input_dirs), "samples\n")
 cat(paste(sample_names, collapse = "\n"), "\n\n")

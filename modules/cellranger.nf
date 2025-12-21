@@ -11,7 +11,7 @@ process CellRanger {
     path transcriptome
     
     output:
-    tuple val(sample_id),  path("${sample_id}_output/outs/")
+    tuple val(sample_id), path("${sample_id}_output/outs/")
 
     script:
     """
