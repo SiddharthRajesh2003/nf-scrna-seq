@@ -26,5 +26,4 @@ conda create -p $base/conda_envs/env/renv \
     nextflow \
     multiqc \
     nf-core
-    
 ```

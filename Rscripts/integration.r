@@ -109,16 +109,18 @@ merged_seurat <- merge(
   y = seurat_list[2:length(seurat_list)],
   add.cell.ids = names(seurat_list),
   project = 'Integrated_scrna'
-)
+) 
 
 cat("Merged object contains", ncol(merged_seurat), "cells\n\n")
 
 cat("Starting Seurat v5 integration workflow...\n")
 cat("Method:", opt$integration_method, "\n\n")
 
-# Split layers by sample (required for v5 integration)
-cat("Splitting layers by sample...\n")
-merged_seurat[["RNA"]] <- split(merged_seurat[["RNA"]], f = merged_seurat$sample)
+if (inherits(merged_seurat[["RNA"]], "Assay5")) {
+  merged_seurat[["RNA"]] <- JoinLayers(merged_seurat[["RNA"]])
+}
+
+merged_seurat@meta.data <- separate(merged_seurat@meta.data, col = 'orig.ident', into = c("Condition", "Sample No."), sep = '_')
 
 cat("Normalizing data...\n")
 merged_seurat <- NormalizeData(merged_seurat)
