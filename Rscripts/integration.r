@@ -89,7 +89,7 @@ for (i in seq_along(input_dirs)) {
 cat("Filtering cells based on QC metrics\n")
 seurat_list <- lapply(seurat_list, function(x) {
     subset(x,
-           subset = nFeature_RNA > opt$min_features &
+            subset = nFeature_RNA > opt$min_features &
                     nFeature_RNA < opt$max_features &
                     nCount_RNA > opt$min_umi &
                     nCount_RNA < opt$max_umi &
@@ -109,18 +109,27 @@ merged_seurat <- merge(
   y = seurat_list[2:length(seurat_list)],
   add.cell.ids = names(seurat_list),
   project = 'Integrated_scrna'
-) 
+)
 
-cat("Merged object contains", ncol(merged_seurat), "cells\n\n")
+merged_seurat@meta.data <- merged_seurat@meta.data %>%
+    separate(col = 'sample', 
+            into = c("Condition", "Sample_Number"), 
+            sep = '_',
+            remove = FALSE)
+# Verify
+cat("\nConditions:\n")
+print(table(merged_seurat$Condition))
+cat("\nSamples per condition:\n")
+print(table(merged_seurat$Condition, merged_seurat$Sample_Number))
 
 cat("Starting Seurat v5 integration workflow...\n")
 cat("Method:", opt$integration_method, "\n\n")
 
-if (inherits(merged_seurat[["RNA"]], "Assay5")) {
-  merged_seurat[["RNA"]] <- JoinLayers(merged_seurat[["RNA"]])
-}
+# Check if layers are already split and join if necessary
+cat("Checking layer structure...\n")
+layer_names <- Layers(merged_seurat[["RNA"]])
+cat("Current layers:", paste(layer_names, collapse = ", "), "\n")
 
-merged_seurat@meta.data <- separate(merged_seurat@meta.data, col = 'orig.ident', into = c("Condition", "Sample No."), sep = '_')
 
 cat("Normalizing data...\n")
 merged_seurat <- NormalizeData(merged_seurat)
