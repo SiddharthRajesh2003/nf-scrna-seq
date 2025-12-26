@@ -26,4 +26,7 @@ conda create -p $base/conda_envs/env/renv \
     nextflow \
     multiqc \
     nf-core
+
+cd conda_envs/env/renv/lib
+ln -s libgsl.so.27 libgsl.so.25 # Azimuth needs this gsl library for its dependency but newest version is usually downloaded so we apply relation as gsl 2.7 is backwards compatible
 ```

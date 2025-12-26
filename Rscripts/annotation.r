@@ -3,9 +3,15 @@
 # === Environment Setup ===
 Sys.setenv(
   LANG = "en_US.UTF-8",
-  LC_ALL = "en_US.UTF-8"
+  LC_ALL = "en_US.UTF-8",
+  # Add these lines to redirect cache to project directory
+  R_USER_DATA_DIR = "/N/project/Krolab/Siddharth/Pipelines/scrna-seq/renv_cache",
+  AZIMUTH_DATA = "/N/project/Krolab/Siddharth/Pipelines/scrna-seq/renv_cache/azimuth"
 )
 
+# Create cache directory if it doesn't exist
+cache_dir <- "/N/project/Krolab/Siddharth/Pipelines/scrna-seq/renv_cache"
+if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE)
 
 # Load required libraries
 suppressPackageStartupMessages({
