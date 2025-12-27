@@ -20,7 +20,7 @@ cat("✓ All libraries loaded successfully\n\n")
 option_list <- list(
   make_option(c("--input_dirs"), type = "character", default = NULL,
             help = "Comma separated list of Cellranger output directories"),
-  make_option(c("--output"), type = "character", default = "integrated_seurat.rds",
+  make_option(c("--output_prefix"), type = "character", default = "integrated_seurat",
             help = "Output RDS file path [default: %default]"),
   make_option(c("--min_cells"), type = "integer", default = 3,
             help = "Minimum cells per gene for Seurat::Read10X function [default: %default]"),
@@ -312,10 +312,11 @@ dev.off()
 # ============================================================================
 
 cat("\nSaving Integrated Seurat Object...\n")
-saveRDS(seurat_integrated, file = opt$output)
+file_name <- paste0(opt$output_prefix, '_res', opt$resolution, '.rds')
+saveRDS(seurat_integrated, file = file_name)
 
 cat("\nIntegration complete!\n")
-cat("Integrated object saved to:", opt$output, "\n")
+cat("Integrated object saved to:", file_name, "\n")
 
 # ============================================================================
 # Print Summary to file

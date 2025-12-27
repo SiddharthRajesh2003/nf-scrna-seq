@@ -11,7 +11,7 @@ process Integration {
     path integration_script
 
     output:
-    path "integrated_seurat.rds", emit: seurat_object
+    path "*.rds", emit: seurat_object
     path "qc_plots/*", emit: qc_plots
     path "integration_summary.txt", emit: summary
 
@@ -27,7 +27,7 @@ process Integration {
     
     Rscript ${integration_script} \\
         --input_dirs ${input_paths} \\
-        --output integrated_seurat.rds \\
+        --output_prefix integrated_seurat \\
         --min_cells ${params.min_cells ?: 3} \\
         --min_features ${params.min_features ?: 200} \\
         --max_features ${params.max_features ?: 7000} \\
