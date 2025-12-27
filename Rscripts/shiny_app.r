@@ -63,7 +63,7 @@ ui <- fluidPage(
         ),
 
         checkboxInput("show_labels", "Show Labels", value = TRUE),
-        checkboxInput("split_by_sample", "Split by Sample", value = FALSE),
+        checkboxInput("split_by_condition", "Split by Condition", value = FALSE),
 
         sliderInput("point_size",
                     "Point Size:",
@@ -124,8 +124,8 @@ ui <- fluidPage(
               withSpinner(plotlyOutput("overview_celltype", height = "500px"))
             ),
             column(6,
-              h4("UMAP by Sample"),
-              withSpinner(plotlyOutput("overview_sample", height = "500px"))
+              h4("UMAP by Condition"),
+              withSpinner(plotlyOutput("overview_condition", height = "500px"))
             )
           ),
           hr(),
@@ -153,8 +153,8 @@ ui <- fluidPage(
           fluidRow(
             column(12,
               conditionalPanel(
-                condition = 'input.split_by_sample',
-                withSpinner(plotlyOutput("dim_reduction_split", height = '600px'))
+                condition = 'input.split_by_condition',
+                withSpinner(plotOutput("dim_reduction_split", height = '600px'))
               )
             )
           )
@@ -172,11 +172,11 @@ ui <- fluidPage(
           fluidRow(
             column(6,
               h4("Violin Plot"),
-              withSpinner(plotlyOutput("feature_violin", height = '500px'))
+              withSpinner(plotOutput("feature_violin", height = '500px'))
             ),
             column(6,
               h4("Dot Plot"),
-              withSpinner(plotlyOutput("feature_dot", height = '500px'))
+              withSpinner(plotOutput("feature_dot", height = '500px'))
             )
           )
         ),
@@ -200,7 +200,7 @@ ui <- fluidPage(
           fluidRow(
             column(12,
               h4("Marker Gene Expression"),
-              withSpinner(plotlyOutput("marker_feature_plot", height = '600px'))
+              withSpinner(plotOutput("marker_feature_plot", height = '600px'))
             )
           )
         ),
@@ -209,11 +209,11 @@ ui <- fluidPage(
         tabPanel("Cell-type Composition",
           fluidRow(
             column(6,
-              h4("Cell Type by Sample"),
+              h4("Cell Type by Condition"),
               withSpinner(plotlyOutput("composition_stacked", height = '500px'))
             ),
             column(6,
-              h4("Sample by Cell type"),
+              h4("Condition by Cell type"),
               withSpinner(plotlyOutput("composition_stacked_flip", height = '500px'))
             )
           ),
@@ -265,7 +265,7 @@ server <- function(input, output, session) {
       # Update UI elements
       incProgress(0.9, detail = 'Updating UI')
 
-      # Get available metdata columns
+      # Get available metadata columns
       meta_cols <- colnames(obj@meta.data)
 
       # Prioritize cell type columns
@@ -309,7 +309,7 @@ server <- function(input, output, session) {
     paste0(
       "Cells: ", ncol(obj), "\n",
       "Features: ", nrow(obj), "\n",
-      "Samples: ", length(unique(obj$Sample_ID)), "\n",
+      "Conditions: ", length(unique(obj$Condition)), "\n",
       "Clusters: ", length(unique(obj$seurat_clusters))
     )
   })
@@ -324,26 +324,26 @@ server <- function(input, output, session) {
     # Get cell type column (prioritize annotation columns)
     celltype_col <- grep("label|type|celltype",
                           colnames(obj@meta.data),
-                          value = TRUE, ignore.case = TRUE) [1]
+                          value = TRUE, ignore.case = TRUE)[1]
     if(is.na(celltype_col)) celltype_col <- "seurat_clusters"
 
     p <- DimPlot(obj, reduction = "umap", group.by = celltype_col,
-                  label = TRUE, repel = TRUE) +
+                  label = TRUE, repel = TRUE, raster = FALSE) +
           theme_minimal() +
           theme(legend.position = 'right')
     
-        ggplotly(p, tooltip = c("group"))
+    ggplotly(p, tooltip = c("label"))
   })
 
-  output$overview_sample <- renderPlotly({
+  output$overview_condition <- renderPlotly({
     req(seurat_obj())
     obj <- seurat_obj()
 
-    p <- DimPlot(obj, reduction = 'umap', group.by = 'Sample_ID') +
+    p <- DimPlot(obj, reduction = 'umap', group.by = 'Condition', raster = FALSE) +
       theme_minimal() +
       theme(legend.position = 'right')
 
-    ggplotly(p, tooltip = c("Group"))
+    ggplotly(p, tooltip = c("label"))
   })
 
   output$celltype_barplot <- renderPlotly({
@@ -356,23 +356,27 @@ server <- function(input, output, session) {
 
     df <- data.frame(
       celltype = obj@meta.data[[celltype_col]],
-      sample = obj$Sample_ID
+      condition = obj$Condition
     )
 
-    ggplot(df, aes(x = celltype, fill = sample)) +
+    p <- ggplot(df, aes(x = celltype, fill = condition)) +
       geom_bar(position = 'dodge') +
       theme_minimal() +
       theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-      labs(x = 'Cell Type', y = 'Number of Cells', fill = 'Sample_ID')
+      labs(x = 'Cell Type', y = 'Number of Cells', fill = 'Condition')
+    
+    ggplotly(p)
   })
 
   output$qc_violin <- renderPlotly({
     req(seurat_obj())
     obj <- seurat_obj()
 
-    VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA", "percent_mt"),
-              ncol=3, pt.size = 0, group.by = 'Sample_ID') +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+    p <- VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"),
+              ncol = 3, pt.size = 0, group.by = 'Condition') +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    
+    ggplotly(p)
   })
   
   # ============================================================================
@@ -380,38 +384,36 @@ server <- function(input, output, session) {
   # ============================================================================
   
   output$dim_reduction_plot <- renderPlotly({
-      req(seurat_obj(), input$color_by)
+    req(seurat_obj(), input$color_by)
     
     obj <- seurat_obj()
 
     p <- DimPlot(
         obj, reduction = input$reduction,
         group.by = input$color_by, label = input$show_labels,
-        repel = TRUE, pt.size = input$point_size
+        repel = TRUE, pt.size = input$point_size, raster = FALSE
     ) +
       theme_minimal() +
       theme(legend.position = 'right')
 
-    ggplotly(p, tooltip = c("group"))
+    ggplotly(p, tooltip = c("label"))
   })
 
-  output$dim_reduction_split <- renderPlotly({
-    req(seurat_obj(), input$split_by_sample)
-    if(!input$split_by_sample) return(NULL)
+  output$dim_reduction_split <- renderPlot({
+    req(seurat_obj(), input$split_by_condition)
+    if(!input$split_by_condition) return(NULL)
     
     obj <- seurat_obj()
 
-    p <- DimPlot(
+    DimPlot(
       obj, reduction = input$reduction,
       group.by = input$color_by,
-      split.by = 'Sample_ID',
+      split.by = 'Condition',
       label = input$show_labels,
       repel = TRUE, pt.size = input$point_size,
-      ncol = 2
+      ncol = 2, raster = FALSE
     ) +
       theme_minimal()
-    
-    ggplotly(p, tooltip = c("group"))
   })
   
   # ============================================================================
@@ -424,11 +426,11 @@ server <- function(input, output, session) {
     
     obj <- seurat_obj()
     
-    p <- FeaturePlot(obj,
+    FeaturePlot(obj,
                 features = input$features,
                 reduction = input$reduction,
                 ncol = min(3, length(input$features)),
-                pt.size = input$point_size) +
+                pt.size = input$point_size, raster = FALSE) +
       scale_color_viridis_c() +
       theme_minimal()
   }, height = function() {
@@ -438,36 +440,32 @@ server <- function(input, output, session) {
     ceiling(n_features / 3) * 250
   })
 
-  output$feature_violin <- renderPlotly({
+  output$feature_violin <- renderPlot({
     req(seurat_obj(), input$features)
     if(length(input$features) == 0) return(NULL)
     
     obj <- seurat_obj()
 
-    p <- VlnPlot(
+    VlnPlot(
       obj, features = input$features,
       group.by = input$color_by, ncol = min(3, length(input$features)),
       pt.size = 0
     ) +
       theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-    ggplotly(p, tooltip = c('group'))
   })
 
-  output$feature_dot <- renderPlotly({
+  output$feature_dot <- renderPlot({
     req(seurat_obj(), input$features)
     if(length(input$features) == 0) return(NULL)
     
     obj <- seurat_obj()
 
-    p <- DotPlot(
+    DotPlot(
       obj, features = input$features,
       group.by = input$color_by
     ) +
       theme_minimal() +
       theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-    ggplotly(p, tooltip = c('group'))
   })
   
   # ============================================================================
@@ -482,6 +480,9 @@ server <- function(input, output, session) {
       cluster <- input$marker_cluster
 
       incProgress(0.5, detail = paste("Analyzing cluster", cluster))
+
+      # Set identity to clusters
+      Idents(obj) <- "seurat_clusters"
 
       # Find markers for selected cluster
       markers <- FindMarkers(
@@ -529,7 +530,10 @@ server <- function(input, output, session) {
 
     # Subset and get expression data
     obj_subset <- subset(obj, downsample = 100)
-    expr_data <- GetAssayData(obj_subset, assay = 'RNA', layer = 'data')
+    
+    # Get expression data using correct Seurat v5 syntax
+    DefaultAssay(obj_subset) <- "RNA"
+    expr_data <- GetAssayData(obj_subset, layer = 'data')
     expr_matrix <- as.matrix(expr_data[top_genes, ])
 
     # Scale the data
@@ -564,7 +568,7 @@ server <- function(input, output, session) {
       show_column_names = FALSE,
       show_row_names = TRUE,
       row_names_gp = gpar(fontsize = 8),
-      column_title = paste("Top ", length(top_genes), " Marker genes"),
+      column_title = paste("Top", length(top_genes), "Marker genes"),
       heatmap_legend_param = list(
         title = 'Scaled\nExpression',
         direction = 'vertical'
@@ -572,7 +576,7 @@ server <- function(input, output, session) {
     )
   })
 
-  output$marker_feature_plot <- renderPlotly({
+  output$marker_feature_plot <- renderPlot({
     req(seurat_obj(), current_markers())
 
     obj <- seurat_obj()
@@ -583,15 +587,13 @@ server <- function(input, output, session) {
       head(min(6, input$top_n_markers)) %>%
       pull(gene)
 
-    p <- FeaturePlot(
+    FeaturePlot(
       obj, features = top_genes,
       reduction = input$reduction,
-      ncol = 3
+      ncol = 3, raster = FALSE
     ) +
       scale_color_viridis_c() +
       theme_minimal()
-
-    ggplotly(p, tooltip = c('group'))
   })
 
   # ============================================================================
@@ -604,17 +606,17 @@ server <- function(input, output, session) {
 
     df <- data.frame(
       celltype = obj@meta.data[[input$color_by]],
-      sample = obj$Sample_ID
+      condition = obj$Condition
     )
 
-    p <- ggplot(df, aes(x = sample, fill = celltype)) +
+    p <- ggplot(df, aes(x = condition, fill = celltype)) +
       geom_bar(position = 'fill') +
       scale_y_continuous(labels = scales::percent) +
       theme_minimal() +
       theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-      labs(x = 'Sample_ID', y = 'Proportion', fill = 'Cell Type')
+      labs(x = 'Condition', y = 'Proportion', fill = 'Cell Type')
 
-    ggplotly(p, tooltip = c('group'))
+    ggplotly(p)
   })
 
   output$composition_stacked_flip <- renderPlotly({
@@ -623,17 +625,17 @@ server <- function(input, output, session) {
 
     df <- data.frame(
       celltype = obj@meta.data[[input$color_by]],
-      sample = obj$Sample_ID
+      condition = obj$Condition
     )
 
-    p <- ggplot(df, aes(x = celltype, fill = sample)) +
+    p <- ggplot(df, aes(x = celltype, fill = condition)) +
       geom_bar(position = 'fill') +
       scale_y_continuous(labels = scales::percent) +
       theme_minimal() +
       theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-      labs(x = 'Cell Type', y = 'Proportion', fill = 'Sample_ID')
+      labs(x = 'Cell Type', y = 'Proportion', fill = 'Condition')
 
-    ggplotly(p, tooltip = c("group"))
+    ggplotly(p)
   })
 
   output$composition_table <- renderDT({
@@ -643,15 +645,15 @@ server <- function(input, output, session) {
 
     df <- data.frame(
       celltype = obj@meta.data[[input$color_by]],
-      sample = obj$Sample_ID
+      condition = obj$Condition
     )
 
     comp_table <- df %>%
-      group_by(sample, celltype) %>%
+      group_by(condition, celltype) %>%
       summarise(count = n(), .groups = 'drop') %>%
-      group_by(sample) %>%
+      group_by(condition) %>%
       mutate(percentage = round(count / sum(count) * 100, 2)) %>%
-      arrange(sample, desc(count))
+      arrange(condition, desc(count))
 
     datatable(
       comp_table,
@@ -664,7 +666,6 @@ server <- function(input, output, session) {
   # Metadata Tab
   # ============================================================================
   
-
   output$metadata_table <- renderDT({
     req(seurat_obj())
 
@@ -693,7 +694,7 @@ server <- function(input, output, session) {
                   group.by = input$color_by,
                   label = input$show_labels,
                   repel = TRUE,
-                  pt.size = input$point_size) +
+                  pt.size = input$point_size, raster = FALSE) +
         theme_minimal()
       
       ggsave(file, plot = p, width = 10, height = 8, dpi = 300)
