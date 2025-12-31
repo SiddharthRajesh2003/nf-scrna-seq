@@ -165,31 +165,6 @@ workflow {
     DownstreamAnalysis(
         cellranger_outputs_ch
     )
-
-    workflow.onComplete {
-        log.info """
-        =====================================================================
-                            Pipeline Execution Summary
-        =====================================================================
-        Completed at: ${workflow.complete}
-        Duration    : ${workflow.duration}
-        Success     : ${workflow.success}
-        Work Dir    : ${workflow.workDir}
-        Exit status : ${workflow.exitStatus}
-        =====================================================================
-        """
-    }
-
-    workflow.onError {
-        log.error """
-        =====================================================================
-                                Pipeline Error
-        =====================================================================
-        Error message: ${workflow.errorMessage}
-        Error report : ${workflow.errorReport}
-        =====================================================================
-        """
-    }
 }
 
 workflow DownstreamAnalysis {
