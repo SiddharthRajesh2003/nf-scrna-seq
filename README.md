@@ -459,7 +459,7 @@ The pipeline includes a Shiny app for interactive exploration of results.
 conda activate /path/to/conda/env
 
 # Run Shiny app
-Rscript Rscripts/shiny_app.r --rds results/annotation/annotated_seurat.rds
+Rscript Rscripts/shiny_app.r
 ```
 
 ### Features
