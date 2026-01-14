@@ -5,7 +5,7 @@
 #SBATCH -o run_pipeline_%j.txt
 #SBATCH -e run_pipeline_%j.err
 #SBATCH --mail-type=ALL
-#SBATCH --mail-user=sidrajes@iu.edu
+#SBATCH --mail-user=your.email@gmail.com
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=12

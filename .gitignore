@@ -2,4 +2,9 @@ results/
 qc.tar.gz
 results.tar.gz
 rds.tar.gz
-check.qmd
+.claude/
+work/
+.nextflow
+.nextflow.log*
+*.pyc
+__pycache__/

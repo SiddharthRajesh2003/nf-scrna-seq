@@ -36,7 +36,7 @@ def helpMessage() {
         --annotation_dir        Annotation output directory [default: \${outdir}/annotation]
         
     Skip Options:
-        --skip_qc               Skip FastQC step [default: false]
+        --skip_fastqc               Skip FastQC step [default: false]
         --skip_cellranger       Skip Cell Ranger and use existing outputs [default: false]
         --fallback_to_cellranger Run Cell Ranger if existing outputs not found [default: true]
     
