@@ -109,7 +109,7 @@ The pipeline uses a comprehensive conda environment with 713 dependencies. Key c
 ### 1. Clone the repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/SiddharthRajesh2003/nf-scrna-seq
 cd nf-scrna-seq
 ```
 
