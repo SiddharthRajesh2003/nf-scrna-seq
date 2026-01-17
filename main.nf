@@ -39,6 +39,7 @@ def helpMessage() {
         --skip_fastqc               Skip FastQC step [default: false]
         --skip_cellranger       Skip Cell Ranger and use existing outputs [default: false]
         --fallback_to_cellranger Run Cell Ranger if existing outputs not found [default: true]
+        --skip_downstream_analysis   Skip integration and annotation steps [default: false]
     
     Example:
         nextflow run main.nf \\
@@ -125,46 +126,73 @@ workflow {
     if (!params.skip_fastqc) {
         log.info "Running FastQC on samples"
         QC(qc_samples_ch)
-
-        MultiQC(QC.out.zip.collect())
+        fastqc_reports = QC.out.zip.collect()
     } else {
-        log.info "Skipping QC as requested"
+        log.info "Skipping FastQC as requested"
+        fastqc_reports = channel.empty()
     }
 
     // Determine whether to run Cell Ranger or use existing outputs
     def skipCellRanger = actuallyskipCellRanger()
-    
+
     if (skipCellRanger) {
-        log.info "Using Existing Cell Ranger outputs from ${params.cellranger_dir}"
+        log.info "Using existing Cell Ranger outputs from ${params.cellranger_dir}"
 
         // Create channel from existing Cell Ranger outputs
         cellranger_outputs_ch = channel
             .fromPath("${params.cellranger_dir}/*/outs/filtered_feature_bc_matrix", type: 'dir', checkIfExists: true)
             .map { matrix_dir ->
                 // Extract sample_id from directory structure
-                // Assumes structure: cellranger_dir/sample_id/outs/filtered_feature_bc_matrix
+                // Assumes structure: cellranger_dir/sample_id_output/outs/filtered_feature_bc_matrix
                 def sample_id = matrix_dir.parent.parent.name.replaceAll("_output", "")
                 tuple(sample_id, matrix_dir)
             }
+
+        // Create channel for existing sample output directories (preserves unique sample names)
+        web_summary_ch = channel
+            .fromPath("${params.cellranger_dir}/*_output", type: 'dir', checkIfExists: true)
+            .toList()
+
     } else {
-        log.info "Running Cell ranger on samples..."
+        log.info "Running Cell Ranger on samples..."
 
         // Run Cell Ranger
-        cellranger_all_output = CellRanger(
+        CellRanger(
             cellranger_samples_ch,
             params.transcriptome
         )
 
-        cellranger_outputs_ch = cellranger_all_output.map {
-            sample_id, outs_dir -> 
+        // Extract filtered_feature_bc_matrix for downstream analysis
+        cellranger_outputs_ch = CellRanger.out.cellranger_out.map {
+            sample_id, outs_dir ->
                 tuple(sample_id, file("${outs_dir}/filtered_feature_bc_matrix"))
         }
-        
+
+        // Collect sample output directories for MultiQC (preserves unique sample names)
+        web_summary_ch = CellRanger.out.cellranger_out
+            .map { _sample_id, outs_dir -> outs_dir.parent }
+            .toList()
     }
 
-    DownstreamAnalysis(
-        cellranger_outputs_ch
-    )
+    // Run MultiQC if FastQC was run OR if we have Cell Ranger summaries
+    if (!params.skip_fastqc || !skipCellRanger) {
+        MultiQC(
+            fastqc_reports.ifEmpty([]),
+            web_summary_ch.ifEmpty([])
+        )
+    } else {
+        log.info "Skipping MultiQC - no QC reports to aggregate"
+    }
+
+    // Run downstream analysis (integration and annotation)
+    if (!params.skip_downstream_analysis) {
+        log.info "Running downstream analysis (integration and annotation)"
+        DownstreamAnalysis(
+            cellranger_outputs_ch
+        )
+    } else {
+        log.info "Skipping downstream analysis as requested"
+    }
 }
 
 workflow DownstreamAnalysis {

@@ -303,6 +303,7 @@ nextflow run main.nf \
 | `--skip_fastqc` | Skip FastQC step | `false` |
 | `--skip_cellranger` | Skip Cell Ranger (use existing outputs) | `false` |
 | `--fallback_to_cellranger` | Run Cell Ranger if outputs missing | `true` |
+| `--skip_downstream_analysis` | Skip integration and annotation steps | `false` |
 | `--integration_method` | Integration method (CCA/RPCA/Harmony/FastMNN) | `CCA` |
 | `--annotation_method` | Annotation method (Azimuth/SingleR) | `Azimuth` |
 | `--resolution` | Clustering resolution | `0.3` |
@@ -338,6 +339,14 @@ nextflow run main.nf \
 nextflow run main.nf \
     --samplesheet metadata/samples.csv \
     --resolution 0.5 \
+    -resume
+```
+
+#### Run only QC and Cell Ranger (skip downstream analysis)
+```bash
+nextflow run main.nf \
+    --samplesheet metadata/samples.csv \
+    --skip_downstream_analysis \
     -resume
 ```
 
